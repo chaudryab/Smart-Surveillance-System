@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-iq2%u^(6_85)wc!gn-&8utb(ba!5)&f-#%fql=x)w$twf92iw3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -76,8 +76,17 @@ WSGI_APPLICATION = 'smart_surveillance_system.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        
+        #---------------------- My SQL ------------------------
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'smart_surveillance_system',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': '127.0.0.1',
+        
+        #---------------------- SQL Lite ------------------------
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

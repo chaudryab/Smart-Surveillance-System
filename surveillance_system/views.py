@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.http.response import HttpResponse, JsonResponse
 from django.http import StreamingHttpResponse
+from .models import *
+from datetime import datetime, date
 
 #---------------------------- Libraries For Gun Detection --------------------------
 import cv2
@@ -55,6 +57,7 @@ def cam1_frame(cam1):
     video_path = 0
     gun_detect_count = 0
     detection_type = None
+    cam_no = 1
     try:
 	    vid = cam1
     except:
@@ -97,7 +100,7 @@ def cam1_frame(cam1):
                 gun_detect_count = gun_detect_count + 1
                 if gun_detect_count == 5:
                     detection_type = 'Gun'
-                    generate_alarm(detection_type)
+                    detection_log(detection_type,cam_no)
                     gun_detect_count = 0
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -108,10 +111,17 @@ def cam1_frame(cam1):
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
             
 
+#---------- Detection Log Saving In DB ------------
+def detection_log(detection_type,cam_no):
+    current_time = datetime.now().strftime('%H:%M:%S')
+    current_date = date.today() 
+    log = Log(cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
+    log.save()
+    generate_alarm()
+    
 #---------- Generate Alarm ------------
-def generate_alarm(detection_type):
+def generate_alarm():
     duration = 1000  # milliseconds
     freq = 440  # Hz
     winsound.Beep(freq, duration) 
-    print(detection_type)  
 
