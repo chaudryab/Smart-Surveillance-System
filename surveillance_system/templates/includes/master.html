@@ -169,7 +169,7 @@
           <div class="left-header col horizontal-wrapper ps-0"></div>
           <div class="nav-right col-8 pull-right right-header p-0">
             <ul class="nav-menus">
-              <li class="onhover-dropdown">
+              <!-- <li class="onhover-dropdown">
                 <div class="notification-box">
                   <i data-feather="bell"> </i
                   ><span class="badge rounded-pill badge-secondary" id="count"> </span>
@@ -177,10 +177,10 @@
                 <ul class="notification-dropdown onhover-show-div" id="name">
                   <li>
                     <i data-feather="bell"></i>
-                    <h6 class="f-18 mb-0">Complains</h6>
+                    <h6 class="f-18 mb-0">Detection Notifications</h6>
                   </li>
                 </ul>
-              </li>
+              </li> -->
 
               <li class="maximize">
                 <a
@@ -311,20 +311,19 @@
                       ><span class="lan-3">Dashboard</span></a
                     >
                   </li>
-                  <!-- <li class="sidebar-list">
-                    <a class="sidebar-link sidebar-title" href="#"
-                      ><i data-feather="users"></i><span>Users</span></a
-                    >
-                    <ul class="sidebar-submenu">
-                      <li><a href="#">Active</a></li>
-                      <li><a href="#">Blocked</a></li>
-                    </ul>
-                  </li>
                   <li class="sidebar-list">
                     <a class="sidebar-link sidebar-title" href="#"
-                      ><i data-feather="alert-circle"></i><span>Complains</span></a
+                      ><i data-feather="video"></i><span>Surveillance System</span></a
                     >
-                  </li> -->
+                    <ul class="sidebar-submenu">
+                      <li><a href="{% url 'gun_detect' %}">Gun</a></li>
+                    </ul>
+                  </li>
+                   <li class="sidebar-list">
+                    <a class="sidebar-link" href="{% url 'alert_logs' %}"
+                      ><i data-feather="alert-circle"></i><span>Alert Logs</span></a
+                    >
+                  </li>
                   <li class="sidebar-list">
                     <a class="sidebar-link sidebar-title" href="#"
                       ><i data-feather="settings"></i><span>Settings</span></a
@@ -409,7 +408,7 @@
         for (let e in data.name) {
         $("#name").append(`<li><a href="#"><p><i class="fa fa-circle-o me-3 font-primary" > </i> ${data.name[e]} </p></a></li>`)
       }
-      $("#name").append(` <li><a class="btn btn-primary" href="#" >View all complains</a> </li>`)
+      $("#name").append(` <li><a class="btn btn-primary" href="#" >View all detections</a> </li>`)
       }
     });
 </script>

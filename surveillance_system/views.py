@@ -162,13 +162,36 @@ def error_404(request):
 def success(request):
     return render(request,'success.html')
 
+#------------- Dashboard --------------
 @login_required
 def index(request):
     return render(request, 'index.html')
 
+#------------- Gun Detection --------------
+@login_required
+def gun_detect(request):
+    return render(request, 'gun_detect.html')
+
+#------------- Video Feed --------------
 @login_required
 def video_feed(request):
     return StreamingHttpResponse(cam1_frame(cam1), content_type='multipart/x-mixed-replace; boundary=frame')
+
+#------------- Log Alerts --------------
+@login_required
+def alert_logs(request):
+    logs = Log.objects.filter(status=1).order_by('-id')
+    logs={'logs':logs}
+    return render(request, 'alert_logs.html',logs)
+
+#------------- Log Delete --------------
+@login_required
+def del_log(request,pk):
+    log=Log.objects.filter(id=pk).first()
+    log.status=0
+    log.save()
+    messages.success(request,"Log Deleted Successfully !!")
+    return redirect('alert_logs')
 
 
 #---------------------------- Gun & Fight Detection  --------------------------

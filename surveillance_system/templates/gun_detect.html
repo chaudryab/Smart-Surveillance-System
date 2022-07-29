@@ -1,0 +1,42 @@
+{% extends 'includes/master.html' %}
+{% block body %}
+{% load static %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div>
+                            <h3 class="text-center">Live Streaming</h3>
+                        </div>
+                    </div>
+                    {% if messages %}
+                    {% for message in messages %}
+                        <div id="alertDiv" class="alert {% if message.tags %}alert-{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}danger{% else %}{{ message.tags }}{% endif %}{% endif %}" role="alert">{{ message }}</div>
+                    {% endfor %}
+                    {% endif %}
+                    <div class="row">
+                        <div class="col-xs-6 col-md-6 mt-5">
+                            <h4 class="text-center">Camera 1</h4>
+                            <img src="{% url 'video_feed' %}" width="100%">
+                        </div>
+                        <div class="col-xs-6 col-md-6 mt-5">
+                            <h4 class="text-center">Camera 2</h4>
+                            <img src="{% url 'video_feed' %}" width="100%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+<script type="text/javascript">
+    $(document).ready( function() {
+        $('#alertDiv').delay(3000).slideUp(1200);
+    });
+</script>
+{% endblock %}
