@@ -1,8 +1,18 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import auth
+from django.contrib.auth.models import User
+import uuid
 from django.http.response import HttpResponse, JsonResponse
+from django.http import HttpResponseRedirect
 from django.http import StreamingHttpResponse
 from .models import *
 from datetime import datetime, date
+from .helpers import *
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth import update_session_auth_hash
 
 #---------------------------- Libraries For Gun Detection --------------------------
 import cv2
@@ -37,16 +47,131 @@ flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the proc
 
 cam1 = cv2.VideoCapture(1)
 
+
+#---------------------------- Admin Portal  --------------------------
+
+#------------- Login --------------
+@csrf_exempt
+def login(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+        user = auth.authenticate(username=username, password=password)
+        if user:
+            if user.is_superuser:
+                auth.login(request, user)
+                return redirect('index')
+        else:
+            messages.error(request, 'Invalid Crendentials')
+            return redirect('login')
+    else:
+        return render(request, 'login.html')
+
+#------------- Forget Password --------------
+@csrf_exempt
+def forget_pwd(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        superuser = User.objects.get(is_superuser=True)
+        if superuser.email == email:
+            token = str(uuid.uuid4())
+            admin_token = Admin_token.objects.get(id=1)
+            admin_token.token = token
+            admin_token.save()
+            send_admin_forget_password_mail(email,token)
+            messages.success(request, 'Email Sent!!')
+            return redirect('forget_pwd')
+        else:
+            messages.error(request, 'Email Not Exist!!')
+            return redirect('forget_pwd')
+    return render(request,'forget_pwd.html')
+
+#------------- Reset Password --------------
+@csrf_exempt
+def reset_pwd(request,token):
+    if request.method == 'GET':
+        if Admin_token.objects.filter(token=token).exists():
+            return render(request, 'reset_pwd.html')
+        else:
+            return redirect('error_404')
+    else:
+        if request.method == 'POST':
+            new_password = request.POST['new_password']
+            confirm_password = request.POST['confirm_password']
+            superusers = User.objects.get(is_superuser=True)
+            if int(len(new_password)) < 6:
+                messages.error(request, 'Password Must Contains Six Characters!!')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER','/'))
+            elif new_password == confirm_password:
+                super_pwd = make_password(new_password, None, 'md5')
+                superusers = User.objects.get(is_superuser=True)
+                superusers.password = super_pwd
+                admin_token = Admin_token.objects.filter(id=1).first()
+                admin_token.token = None
+                superusers.save()
+                admin_token.save()
+                messages.success(request, 'Password Changed!!')
+                return redirect('success')
+            else:
+                messages.error(request, 'Password Did Not Match!!')
+                return HttpResponseRedirect(request.META.get('HTTP_REFERER','/'))
+        else:
+            return redirect('error_404')
+
+#------------- Admin Change Password --------------
+@login_required
+@csrf_exempt
+def change_password(request):
+    superusers = User.objects.get(is_superuser=True)
+
+    if request.method == 'POST':
+        old_password = request.POST['old_password']
+        new_password = request.POST['new_password']
+        confirm_password = request.POST['confirm_password']
+        superusers = User.objects.get(is_superuser=True)
+        if check_password(old_password,superusers.password):
+            if int(len(new_password)) < 6:
+                messages.error(request, 'Password Must Contains Six Characters!!')
+                return redirect('change_password')
+            elif new_password == confirm_password:
+                super_pwd = make_password(new_password, None, 'md5')
+                superusers.password = super_pwd
+                superusers.save()
+                messages.success(request, 'Password successfully changed.')
+                update_session_auth_hash(request, superusers)
+                return redirect('change_password')
+            else:
+                messages.error(request, 'Password Did Not Match!!')
+                return redirect('change_password')
+        else:
+            messages.error(request, 'Invalid Old Password!!')
+            return redirect('change_password')
+    return render(request,'change_password.html')
+
+#------------- Admin Logout --------------
+@login_required
+def logout(request):
+    auth.logout(request)
+    return redirect('login')
+
+#------------- Error-404 Page --------------
+def error_404(request):
+    return render(request,'error_404.html')
+
+#------------- Success Page--------------
+def success(request):
+    return render(request,'success.html')
+
+@login_required
 def index(request):
     return render(request, 'index.html')
 
+@login_required
 def video_feed(request):
     return StreamingHttpResponse(cam1_frame(cam1), content_type='multipart/x-mixed-replace; boundary=frame')
 
 
 #---------------------------- Gun & Fight Detection  --------------------------
-
-
 
 #-------- Gun Detection -----------
 def cam1_frame(cam1):
