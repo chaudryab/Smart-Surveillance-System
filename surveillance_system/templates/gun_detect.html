@@ -18,14 +18,18 @@
                     {% endfor %}
                     {% endif %}
                     <div class="row">
+                        {% if cam1 == 1 %}
                         <div class="col-xs-6 col-md-6 mt-5">
                             <h4 class="text-center">Camera 1</h4>
-                            <img src="{% url 'video_feed' %}" width="100%">
+                            <img src="{% url 'cam1_video_feed' %}" width="100%">
                         </div>
+                        {% endif %}
+                        {% if cam2 == 1 %}
                         <div class="col-xs-6 col-md-6 mt-5">
                             <h4 class="text-center">Camera 2</h4>
-                            <img src="{% url 'video_feed' %}" width="100%">
+                            <img src="{% url 'cam2_video_feed' %}" width="100%">
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

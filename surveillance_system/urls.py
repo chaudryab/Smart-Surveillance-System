@@ -12,7 +12,8 @@ urlpatterns = [
     path('success',views.success,name='success'),
     path('index',views.index,name='index'),
     path('gun_detect',views.gun_detect,name='gun_detect'),
-    path('video_feed',views.video_feed,name='video_feed'),
+    path('cam1_video_feed',views.cam1_video_feed,name='cam1_video_feed'),
+    path('cam2_video_feed',views.cam2_video_feed,name='cam2_video_feed'),
     path('alert_logs',views.alert_logs,name='alert_logs'),
     path('del_log/<pk>',views.del_log,name='del_log'),
 ]

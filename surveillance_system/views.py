@@ -29,8 +29,10 @@ import cv2
 import numpy as np
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+from keras.models import load_model
 from imutils.video import FPS
 import winsound
+import os
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-tiny-416', 'path to weights file')
@@ -44,8 +46,10 @@ flags.DEFINE_string('output', None, 'path to output video')
 flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file, MJPG or XVID')
 flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the process') # this is good for the .ipynb
 
+gun_model =  os.path.join(settings.BASE_DIR,'gun_detection/checkpoints/yolov4-tiny-416')
 
 cam1 = cv2.VideoCapture(1)
+cam2 = cv2.VideoCapture(0)
 
 
 #---------------------------- Admin Portal  --------------------------
@@ -123,7 +127,6 @@ def reset_pwd(request,token):
 @csrf_exempt
 def change_password(request):
     superusers = User.objects.get(is_superuser=True)
-
     if request.method == 'POST':
         old_password = request.POST['old_password']
         new_password = request.POST['new_password']
@@ -170,12 +173,18 @@ def index(request):
 #------------- Gun Detection --------------
 @login_required
 def gun_detect(request):
-    return render(request, 'gun_detect.html')
+    cam_status = {'cam1':1,'cam2':0}
+    return render(request, 'gun_detect.html',cam_status)
 
-#------------- Video Feed --------------
+#------------- Camera 1 Video Feed For Gun Detection --------------
 @login_required
-def video_feed(request):
-    return StreamingHttpResponse(cam1_frame(cam1), content_type='multipart/x-mixed-replace; boundary=frame')
+def cam1_video_feed(request):
+    return StreamingHttpResponse(cam1_gun_detect(request,cam1), content_type='multipart/x-mixed-replace; boundary=frame')
+
+#------------- Camera 2 Video Feed For Gun Detection --------------
+@login_required
+def cam2_video_feed(request):
+    return StreamingHttpResponse(cam1_gun_detect(request,cam2), content_type='multipart/x-mixed-replace; boundary=frame')
 
 #------------- Log Alerts --------------
 @login_required
@@ -197,7 +206,7 @@ def del_log(request,pk):
 #---------------------------- Gun & Fight Detection  --------------------------
 
 #-------- Gun Detection -----------
-def cam1_frame(cam1):
+def cam1_gun_detect(request,cam1):
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
@@ -210,8 +219,69 @@ def cam1_frame(cam1):
 	    vid = cam1
     except:
     	vid = cv2.VideoCapture(int(video_path))
-    saved_model_loaded = tf.saved_model.load('D:\FYP\Smart Surveillance System\smart_surveillance_system\surveillance_system\checkpoints\yolov4-tiny-416', tags=[tag_constants.SERVING])
-    # saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-tiny-416', tags=[tag_constants.SERVING])
+    saved_model_loaded = tf.saved_model.load(gun_model,tags=[tag_constants.SERVING])
+    infer = saved_model_loaded.signatures['serving_default']
+    frame_id = 0
+    while True:
+        return_value, frame = vid.read()
+        if not return_value:
+            break
+        else:
+            # print("------------------------")
+            # print(return_value)
+            # print("------------------------")
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame)
+            frame_size = frame.shape[:2]
+            image_data = cv2.resize(frame, (input_size, input_size))
+            image_data = image_data / 255.
+            image_data = image_data[np.newaxis, ...].astype(np.float32)
+            prev_time = time.time()
+            batch_data = tf.constant(image_data)
+            pred_bbox = infer(batch_data)
+            for key, value in pred_bbox.items():
+                boxes = value[:, :, 0:4]
+                pred_conf = value[:, :, 4:]
+            boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
+            boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
+            scores=tf.reshape(
+                pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
+            max_output_size_per_class=50,
+            max_total_size=50,
+            iou_threshold=0.45,
+            score_threshold=0.50
+            )
+            pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
+            if valid_detections.numpy() == 1:
+                gun_detect_count = gun_detect_count + 1
+                if gun_detect_count == 5:
+                    detection_type = 'Gun'
+                    detection_log(detection_type,cam_no)
+                    gun_detect_count = 0
+            result = np.asarray(frame)
+            result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            frame_id += 1
+            ret, buffer = cv2.imencode('.jpg', result)
+            fframe = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
+    
+            
+#-------- Gun Detection -----------
+def cam2_gun_detect(request,cam2):
+    config = ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = InteractiveSession(config=config)
+    input_size = 416
+    video_path = 0
+    gun_detect_count = 0
+    detection_type = None
+    cam_no = 2
+    try:
+	    vid = cam2
+    except:
+    	vid = cv2.VideoCapture(int(video_path))
+    saved_model_loaded = tf.saved_model.load(gun_model,tags=[tag_constants.SERVING])
     infer = saved_model_loaded.signatures['serving_default']
     frame_id = 0
     while True:
