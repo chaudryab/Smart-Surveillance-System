@@ -12,6 +12,7 @@ class Admin_token(models.Model):
 #------------- Detection Log Table --------------
 class Log(models.Model):
     id = models.AutoField(primary_key=True)
+    image = models.CharField(max_length=255,null=True)
     cam_no = models.IntegerField(default=None)
     detection_type = models.CharField(max_length=255)
     time = models.TimeField(null=True)

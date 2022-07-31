@@ -13,6 +13,7 @@ from datetime import datetime, date
 from .helpers import *
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth import update_session_auth_hash
+import random
 
 #---------------------------- Libraries For Gun Detection --------------------------
 import cv2
@@ -48,7 +49,7 @@ flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the proc
 
 gun_model =  os.path.join(settings.BASE_DIR,'gun_detection/checkpoints/yolov4-tiny-416')
 
-cam1 = cv2.VideoCapture(1)
+cam1 = cv2.VideoCapture(0)
 cam2 = cv2.VideoCapture(0)
 
 
@@ -168,6 +169,9 @@ def success(request):
 #------------- Dashboard --------------
 @login_required
 def index(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     return render(request, 'index.html')
 
 #------------- Gun Detection --------------
@@ -179,19 +183,26 @@ def gun_detect(request):
 #------------- Camera 1 Video Feed For Gun Detection --------------
 @login_required
 def cam1_video_feed(request):
-    return StreamingHttpResponse(cam1_gun_detect(request,cam1), content_type='multipart/x-mixed-replace; boundary=frame')
+    return StreamingHttpResponse(cam1_gun_detect(cam1), content_type='multipart/x-mixed-replace; boundary=frame')
 
 #------------- Camera 2 Video Feed For Gun Detection --------------
 @login_required
 def cam2_video_feed(request):
-    return StreamingHttpResponse(cam1_gun_detect(request,cam2), content_type='multipart/x-mixed-replace; boundary=frame')
+    return StreamingHttpResponse(cam2_gun_detect(cam2), content_type='multipart/x-mixed-replace; boundary=frame')
 
 #------------- Log Alerts --------------
 @login_required
 def alert_logs(request):
     logs = Log.objects.filter(status=1).order_by('-id')
     logs={'logs':logs}
-    return render(request, 'alert_logs.html',logs)
+    return render(request,'alert_logs.html',logs)
+
+#------------- Log Delete --------------
+@login_required
+def view_log(request,pk):
+    logs=Log.objects.filter(id=pk).first()
+    log={'log':logs}
+    return render(request,'view_log.html',log)
 
 #------------- Log Delete --------------
 @login_required
@@ -205,11 +216,10 @@ def del_log(request,pk):
 
 #---------------------------- Gun & Fight Detection  --------------------------
 
-#-------- Gun Detection -----------
-def cam1_gun_detect(request,cam1):
+#-------- Camera 1 Gun Detection -----------
+def cam1_gun_detect(cam1):
     config = ConfigProto()
     config.gpu_options.allow_growth = True
-    session = InteractiveSession(config=config)
     input_size = 416
     video_path = 0
     gun_detect_count = 0
@@ -231,12 +241,9 @@ def cam1_gun_detect(request,cam1):
             # print(return_value)
             # print("------------------------")
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
-            frame_size = frame.shape[:2]
             image_data = cv2.resize(frame, (input_size, input_size))
             image_data = image_data / 255.
             image_data = image_data[np.newaxis, ...].astype(np.float32)
-            prev_time = time.time()
             batch_data = tf.constant(image_data)
             pred_bbox = infer(batch_data)
             for key, value in pred_bbox.items():
@@ -256,7 +263,10 @@ def cam1_gun_detect(request,cam1):
                 gun_detect_count = gun_detect_count + 1
                 if gun_detect_count == 5:
                     detection_type = 'Gun'
-                    detection_log(detection_type,cam_no)
+                    num = random.random()
+                    frame_in_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame_in_rgb)
+                    detection_log(detection_type,cam_no,num)
                     gun_detect_count = 0
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -267,11 +277,10 @@ def cam1_gun_detect(request,cam1):
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
     
             
-#-------- Gun Detection -----------
-def cam2_gun_detect(request,cam2):
+#-------- Camera 2 Gun Detection -----------
+def cam2_gun_detect(cam2):
     config = ConfigProto()
     config.gpu_options.allow_growth = True
-    session = InteractiveSession(config=config)
     input_size = 416
     video_path = 0
     gun_detect_count = 0
@@ -289,16 +298,10 @@ def cam2_gun_detect(request,cam2):
         if not return_value:
             break
         else:
-            # print("------------------------")
-            # print(return_value)
-            # print("------------------------")
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
-            frame_size = frame.shape[:2]
             image_data = cv2.resize(frame, (input_size, input_size))
             image_data = image_data / 255.
             image_data = image_data[np.newaxis, ...].astype(np.float32)
-            prev_time = time.time()
             batch_data = tf.constant(image_data)
             pred_bbox = infer(batch_data)
             for key, value in pred_bbox.items():
@@ -318,7 +321,10 @@ def cam2_gun_detect(request,cam2):
                 gun_detect_count = gun_detect_count + 1
                 if gun_detect_count == 5:
                     detection_type = 'Gun'
-                    detection_log(detection_type,cam_no)
+                    num = random.random()
+                    frame_in_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame_in_rgb)
+                    detection_log(detection_type,cam_no,num)
                     gun_detect_count = 0
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -329,11 +335,11 @@ def cam2_gun_detect(request,cam2):
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
             
 
-#---------- Detection Log Saving In DB ------------
-def detection_log(detection_type,cam_no):
+#---------- Detection Log Save In DB ------------
+def detection_log(detection_type,cam_no,num):
     current_time = datetime.now().strftime('%H:%M:%S')
     current_date = date.today() 
-    log = Log(cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
+    log = Log(image=num,cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
     log.save()
     generate_alarm()
     

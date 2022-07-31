@@ -38,6 +38,7 @@
                                     <td>{{ log.time }}</td>
                                     <td>{{ log.date }}</td>
                                     <td>
+                                        <a href="{% url 'view_log' pk=log.id %}" class="btn btn-outline-primary btn-sm waves-effect waves-light"><i class="fa fa-info fa-md" ></i></a>
                                         <a href="{% url 'del_log' pk=log.id %}" class="btn btn-outline-danger btn-sm waves-effect waves-light"><i class="fa fa-trash fa-md" ></i></a>
                                     </td>
                                 </tr>

@@ -15,5 +15,6 @@ urlpatterns = [
     path('cam1_video_feed',views.cam1_video_feed,name='cam1_video_feed'),
     path('cam2_video_feed',views.cam2_video_feed,name='cam2_video_feed'),
     path('alert_logs',views.alert_logs,name='alert_logs'),
+    path('view_log/<pk>',views.view_log,name='view_log'),
     path('del_log/<pk>',views.del_log,name='del_log'),
 ]
