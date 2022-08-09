@@ -34,6 +34,7 @@ from keras.models import load_model
 from imutils.video import FPS
 import winsound
 import os
+import tensorflow.lite as tflite
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-tiny-416', 'path to weights file')
@@ -48,9 +49,26 @@ flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when sav
 flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the process') # this is good for the .ipynb
 
 gun_model =  os.path.join(settings.BASE_DIR,'gun_detection/checkpoints/yolov4-tiny-416')
+fight_model =  os.path.join(settings.BASE_DIR,'fight_detection/fightModel.tflite')
 
-cam1 = cv2.VideoCapture(0)
+cam1 = cv2.VideoCapture(1)
 cam2 = cv2.VideoCapture(0)
+
+class_ind = {
+    0: 'fight',
+    1: 'nofight'
+}
+
+# Load TFLite model and allocate tensors.
+interpreter = tflite.Interpreter(model_path= fight_model)
+# allocate the tensors
+interpreter.allocate_tensors()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+
+
 
 
 #---------------------------- Admin Portal  --------------------------
@@ -177,7 +195,7 @@ def index(request):
 #------------- Gun Detection --------------
 @login_required
 def gun_detect(request):
-    cam_status = {'cam1':1,'cam2':0}
+    cam_status = {'cam1':1,'cam2':1}
     return render(request, 'gun_detect.html',cam_status)
 
 #------------- Camera 1 Video Feed For Gun Detection --------------
@@ -243,6 +261,11 @@ def cam1_gun_detect(cam1):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image_data = cv2.resize(frame, (input_size, input_size))
             image_data = image_data / 255.
+            
+            #------------IMPORTANT-------------
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            
             image_data = image_data[np.newaxis, ...].astype(np.float32)
             batch_data = tf.constant(image_data)
             pred_bbox = infer(batch_data)
@@ -270,6 +293,30 @@ def cam1_gun_detect(cam1):
                     gun_detect_count = 0
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            
+            
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+
+            highest_pred_loc = np.argmax(pred)
+
+            bird_name = class_ind[highest_pred_loc]
+            print("----------------------------------")
+            print("---Camera 1--")
+            print(valid_detections.numpy())
+            print(bird_name)
+            print("----------------------------------")
+            
+            
             frame_id += 1
             ret, buffer = cv2.imencode('.jpg', result)
             fframe = buffer.tobytes()
@@ -279,6 +326,7 @@ def cam1_gun_detect(cam1):
             
 #-------- Camera 2 Gun Detection -----------
 def cam2_gun_detect(cam2):
+    print("----------------------------------------------------------------")
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     input_size = 416
@@ -301,6 +349,11 @@ def cam2_gun_detect(cam2):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image_data = cv2.resize(frame, (input_size, input_size))
             image_data = image_data / 255.
+            
+            #------------IMPORTANT-------------
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            
             image_data = image_data[np.newaxis, ...].astype(np.float32)
             batch_data = tf.constant(image_data)
             pred_bbox = infer(batch_data)
@@ -328,6 +381,29 @@ def cam2_gun_detect(cam2):
                     gun_detect_count = 0
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+
+            highest_pred_loc = np.argmax(pred)
+
+            bird_name = class_ind[highest_pred_loc]
+            print("----------------------------------")
+            print("---Camera 2--")
+            print(valid_detections.numpy())
+            print(bird_name)
+            print("----------------------------------")
+            
+            
             frame_id += 1
             ret, buffer = cv2.imencode('.jpg', result)
             fframe = buffer.tobytes()

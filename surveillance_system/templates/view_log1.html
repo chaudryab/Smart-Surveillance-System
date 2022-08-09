@@ -1,0 +1,67 @@
+{% extends 'includes/master.html' %}
+{% block css %}
+{% endblock %}
+{% block body %}
+{% load static %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div>
+                            <h3 class="text-center">Alert Information</h3>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-6 col-md-6 mt-5">
+                            <img src="../../static/detection_images/frame_{{ log.image }}.jpg" width="90%">
+                        </div>
+                        <div class="col-xs-6 col-md-6 mt-5">
+                            <div class="row mt-2">
+                                <div class="col-sm-3">
+                                <h6 class="mb-0">Detecion</h6>
+                                </div>
+                                <div class="col-sm-9 text-secondary">
+                                    {{ log.detection_type }}
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-sm-3">
+                                <h6 class="mb-0">Camera</h6>
+                                </div>
+                                <div class="col-sm-9 text-secondary">
+                                    {{ log.cam_no }}
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-sm-3">
+                                <h6 class="mb-0">Time</h6>
+                                </div>
+                                <div class="col-sm-9 text-secondary">
+                                    {{ log.time }}
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-sm-3">
+                                <h6 class="mb-0">Date</h6>
+                                </div>
+                                <div class="col-sm-9 text-secondary">
+                                    {{ log.date }}
+                                </div>
+                            </div>
+                            <div class="mt-5">
+                                <a class="btn btn-primary" href="{% url 'alert_logs' %}" role="button">Back</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+
+{% endblock %}
