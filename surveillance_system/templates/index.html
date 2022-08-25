@@ -2,7 +2,360 @@
 {% block body %}
 {% load static %}
 
+<div class="page-title">
+  <div class="row">
+      <div class="col-6">
+          <h3>Dashboard</h3>
+      </div>
+  </div>
+</div>
+<div class="container-fluid">
+  <div class="row">
+      <div class="col-sm-6 col-xl-6 col-lg-6">
+        <div class="card o-hidden">
+          <a href="{% url 'gun_logs' %}">
+          <div class="bg-primary b-r-4 card-body" style="height: 150px; padding-left:0px;">
+            <div class="media static-top-widget">
+              <div class="media-body"><span class="m-0">Gun Detection</span>
+                <h4 class="mb-0 counter">{{ gun_counts }}</h4><i class="icon-bg" data-feather="user-check"></i>
+              </div>
+            </div>
+          </div>
+          </a>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-6 col-lg-6">
+        <div class="card o-hidden">
+          <a href="{% url 'fight_logs' %}">
+          <div class="bg-secondary b-r-4 card-body" style="height: 150px; padding-left:0px;">
+            <div class="media static-top-widget">
+              <div class="media-body"><span class="m-0">Fight Detection</span>
+                <h4 class="mb-0 counter">{{ fight_counts }}</h4><i class="icon-bg" data-feather="user-x"></i>
+              </div>
+            </div>
+          </div>
+          </a>
+        </div>
+      </div>
+  </div>
+  <div class="row">
+    <div class="col-xl-6 col-lg-12 dashboard-sec box-col-12">
+        <div class="card earning-card">
+            <div class="card-body p-0">
+                <div class="row m-0">
+                    <div class="col-xl-12 p-0">
+                        <div class="chart-right">
+                            <div class="row m-0 p-tb">
+                                <div class="col-xl-8 col-md-8 col-sm-8 col-12 p-0">
+                                    <div class="inner-top-left">
+                                        <ul class="d-flex list-unstyled">
+                                            <li class="active">Monthly Gun Detections</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xl-12">
+                                    <div class="card-body p-0">
+                                        <div class="current-sale-container">
+                                            <div id="chart-currently"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-12 dashboard-sec box-col-12">
+      <div class="card earning-card">
+          <div class="card-body p-0">
+              <div class="row m-0">
+                  <div class="col-xl-12 p-0">
+                      <div class="chart-right">
+                          <div class="row m-0 p-tb">
+                              <div class="col-xl-8 col-md-8 col-sm-8 col-12 p-0">
+                                  <div class="inner-top-left">
+                                      <ul class="d-flex list-unstyled">
+                                          <li class="active">Monthly Fight Detections</li>
+                                      </ul>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-xl-12">
+                                  <div class="card-body p-0">
+                                      <div class="current-sale-container">
+                                          <div id="chart-currently1"></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row second-chart-list align-items-center third-news-update">
+    <div class="col-xl-4 col-lg-12 xl-50 morning-sec box-col-12 mt-4">
+      <div class="card o-hidden profile-greeting">
+        <div class="card-body">
+          <div class="media">
+            <div class="badge-groups w-100">
+              <div class="badge f-12"><i class="me-1" data-feather="clock"></i><span id="txt"></span></div>
+              <div class="badge f-12"><i class="fa fa-spin fa-cog f-14"></i></div>
+            </div>
+          </div>
+          <div class="greeting-user text-center">
+            <div class="profile-vector"><img class="img-fluid" src="{% static '/images/dashboard/welcome.png' %}" alt=""></div>
+            <h4 class="f-w-600"><span id="greeting">Good Morning</span> <span class="right-circle"><i class="fa fa-check-circle f-14 middle"></i></span></h4>
+            <p><span> Have a Good Day </span></p>
+            <div class="whatsnew-btn"><a class="btn btn-primary">Smart Surveillance System</a></div>
+            <div class="left-icon"><i class="fa fa-bell"> </i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-lg-12 xl-50 calendar-sec box-col-6 mt-4">
+      <div class="card gradient-primary o-hidden">
+        <div class="card-body">
+          <div class="setting-dot">
+            <div class="setting-bg-primary date-picker-setting position-set pull-right"><i class="fa fa-spin fa-cog"></i></div>
+          </div>
+          <div class="default-datepicker">
+            <div class="datepicker-here" data-language="en"></div>
+          </div><span class="default-dots-stay overview-dots full-width-dots"><span class="dots-group"><span class="dots dots1"></span><span class="dots dots2 dot-small"></span><span class="dots dots3 dot-small"></span><span class="dots dots4 dot-medium"></span><span class="dots dots5 dot-small"></span><span class="dots dots6 dot-small"></span><span class="dots dots7 dot-small-semi"></span><span class="dots dots8 dot-small-semi"></span><span class="dots dots9 dot-small">                </span></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
+
 {% block js %}
+    <script src="{% static '/js/dashboard/default.js' %}" ></script>
+    <script src="{% static '/js/datepicker/date-picker/datepicker.js' %}" ></script>
+    <script src="{% static '/js/datepicker/date-picker/datepicker.en.js' %}" ></script>
+    <script src="{% static '/js/general-widget.js' %}"></script>
+  <script>
+
+var url = "{% url 'monthly_gun_detection_chart' %}";
+$.get(url).then(function(result){
+    var months = result.months.reverse()
+    var gun_detection = result.gun_detection_count.reverse()
+
+var options = {
+    series: [{
+        name: 'Gun Detection',
+        data: gun_detection
+    }
+    // , {
+    //     name: 'series2',
+    //     data: [2, 22, 35, 32, 40, 25, 50, 38, 42, 28, 20, 45, 0]
+    // }
+],
+    chart: {
+        height: 240,
+        type: 'area',
+        toolbar: {
+            show: false
+        },
+    },
+    dataLabels: {
+        enabled: false
+    },
+    stroke: {
+        curve: 'smooth'
+    },
+    xaxis: {
+        type: 'category',
+        low: 0,
+        offsetX: 0,
+        offsetY: 0,
+        show: false,
+        categories: months,
+        labels: {
+            low: 0,
+            offsetX: 0,
+            show: false,
+        },
+        axisBorder: {
+            low: 0,
+            offsetX: 0,
+            show: false,
+        },
+    },
+    markers: {
+        strokeWidth: 3,
+        colors: "#ffffff",
+        strokeColors: [ CubaAdminConfig.primary , CubaAdminConfig.secondary ],
+        hover: {
+            size: 6,
+        }
+    },
+    yaxis: {
+        low: 0,
+        offsetX: 0,
+        offsetY: 0,
+        show: false,
+        labels: {
+            low: 0,
+            offsetX: 0,
+            show: false,
+        },
+        axisBorder: {
+            low: 0,
+            offsetX: 0,
+            show: false,
+        },
+    },
+    grid: {
+        show: false,
+        padding: {
+            left: 0,
+            right: 0,
+            bottom: -15,
+            top: -40
+        }
+    },
+    colors: [ CubaAdminConfig.primary , CubaAdminConfig.secondary ],
+    fill: {
+        type: 'gradient',
+        gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.7,
+            opacityTo: 0.5,
+            stops: [0, 80, 100]
+        }
+    },
+    legend: {
+        show: false,
+    },
+    tooltip: {
+        x: {
+            format: 'MM'
+        },
+    },
+};
+
+var chart = new ApexCharts(document.querySelector("#chart-currently"), options);
+chart.render();
+})
+
+</script>
+
+<script>  
+var url = "{% url 'monthly_fight_detection_chart' %}";
+$.get(url).then(function(result){
+console.log(result)
+var months = result.months.reverse()
+var fight_detection = result.fight_detection_count.reverse()
+var options = {
+series: [{
+    name: 'Fight Detection',
+    data: fight_detection
+}
+// , {
+//     name: 'series2',
+//     data: [2, 22, 35, 32, 40, 25, 50, 38, 42, 28, 20, 45, 0]
+// }
+],
+chart: {
+    height: 240,
+    type: 'area',
+    toolbar: {
+        show: false
+    },
+},
+dataLabels: {
+    enabled: false
+},
+stroke: {
+    curve: 'smooth'
+},
+xaxis: {
+    type: 'category',
+    low: 0,
+    offsetX: 0,
+    offsetY: 0,
+    show: false,
+    categories: months,
+    labels: {
+        low: 0,
+        offsetX: 0,
+        show: false,
+    },
+    axisBorder: {
+        low: 0,
+        offsetX: 0,
+        show: false,
+    },
+},
+markers: {
+    strokeWidth: 3,
+    colors: "#ffffff",
+    strokeColors: [ CubaAdminConfig.primary , CubaAdminConfig.secondary ],
+    hover: {
+        size: 6,
+    }
+},
+yaxis: {
+    low: 0,
+    offsetX: 0,
+    offsetY: 0,
+    show: false,
+    labels: {
+        formatter: function (value) {
+          return  "$ "+value;
+        },
+        low: 0,
+        offsetX: 0,
+        show: false,
+    },
+    axisBorder: {
+        low: 0,
+        offsetX: 0,
+        show: false,
+    },
+    
+},
+grid: {
+    show: false,
+    padding: {
+        left: 0,
+        right: 0,
+        bottom: -15,
+        top: -40
+    }
+},
+colors: [ CubaAdminConfig.secondary , CubaAdminConfig.primary ],
+fill: {
+    type: 'gradient',
+    gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.5,
+        stops: [0, 80, 100]
+    }
+},
+legend: {
+    show: false,
+},
+tooltip: {
+    x: {
+        format: 'MM'
+    },
+},
+};
+var chart = new ApexCharts(document.querySelector("#chart-currently1"), options);
+chart.render();
+})
+
+</script>
 {% endblock %}

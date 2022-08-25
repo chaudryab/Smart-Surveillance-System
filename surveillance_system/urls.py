@@ -15,6 +15,10 @@ urlpatterns = [
     path('cam1_video_feed',views.cam1_video_feed,name='cam1_video_feed'),
     path('cam2_video_feed',views.cam2_video_feed,name='cam2_video_feed'),
     path('alert_logs',views.alert_logs,name='alert_logs'),
+    path('gun_logs',views.gun_logs,name='gun_logs'),
+    path('fight_logs',views.fight_logs,name='fight_logs'),
     path('view_log/<pk>',views.view_log,name='view_log'),
     path('del_log/<pk>',views.del_log,name='del_log'),
+    path('monthly_gun_detection_chart', views.GunDetectionChart, name="monthly_gun_detection_chart"),
+    path('monthly_fight_detection_chart', views.FightDetectionChart, name="monthly_fight_detection_chart"),
 ]

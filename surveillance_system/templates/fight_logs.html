@@ -1,0 +1,65 @@
+{% extends 'includes/master.html' %}
+{% block body %}
+{% load static %}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="card mt-3">
+                <div class="card-body">
+                    <div class="row">
+                        <div>
+                            <h3 class="text-center">Fight Logs</h3>
+                        </div>
+                    </div>
+                    {% if messages %}
+                    {% for message in messages %}
+                        <div id="alertDiv" class="alert {% if message.tags %}alert-{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}danger{% else %}{{ message.tags }}{% endif %}{% endif %}" role="alert">{{ message }}</div>
+                    {% endfor %}
+                    {% endif %}
+                    <div class="table-responsive mt-2">
+                        <table class="display" id="basic-1">
+                            <thead>
+                                <tr>
+                                    <th>Sr</th>
+                                    <th>Detection</th>
+                                    <th>Camera</th>
+                                    <th>Time</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ log.detection_type }}</td>
+                                    <td>{{ log.cam_no }}</td>
+                                    <td>{{ log.time }}</td>
+                                    <td>{{ log.date }}</td>
+                                    <td>
+                                        <a href="{% url 'view_log' pk=log.id %}" class="btn btn-outline-primary btn-sm waves-effect waves-light"><i class="fa fa-info fa-md" ></i></a>
+                                        <a href="{% url 'del_log' pk=log.id %}" class="btn btn-outline-danger btn-sm waves-effect waves-light"><i class="fa fa-trash fa-md" ></i></a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block js %}
+
+    <script src="{% static '/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static '/js/datatable/datatables/datatable.custom.js' %}"></script>
+    <script type="text/javascript">
+        $(document).ready( function() {
+            $('#alertDiv').delay(3000).slideUp(1200);
+        });
+    </script>
+{% endblock %}

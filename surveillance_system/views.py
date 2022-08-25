@@ -9,11 +9,13 @@ from django.http.response import HttpResponse, JsonResponse
 from django.http import HttpResponseRedirect
 from django.http import StreamingHttpResponse
 from .models import *
-from datetime import datetime, date
+import datetime
+# from datetime import datetime, date
 from .helpers import *
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth import update_session_auth_hash
 import random
+from django.db.models import Q
 
 #---------------------------- Libraries For Gun Detection --------------------------
 import cv2
@@ -187,10 +189,13 @@ def success(request):
 #------------- Dashboard --------------
 @login_required
 def index(request):
+    gun_counts=Log.objects.filter(status=1,detection_type='Gun').count()
+    fight_counts=Log.objects.filter(status=1,detection_type='Fight').count()
+    detection = {'gun_counts':gun_counts,'fight_counts':fight_counts}
     cam1.release()
     cam2.release()
     cv2.destroyAllWindows()
-    return render(request, 'index.html')
+    return render(request, 'index.html',detection)
 
 #------------- Gun Detection --------------
 @login_required
@@ -215,6 +220,20 @@ def alert_logs(request):
     logs={'logs':logs}
     return render(request,'alert_logs.html',logs)
 
+#------------- Gun Detecion Logs --------------
+@login_required
+def gun_logs(request):
+    logs = Log.objects.filter(status=1,detection_type='Gun').order_by('-id')
+    logs={'logs':logs}
+    return render(request,'gun_logs.html',logs)
+
+#------------- Fight Detecion Logs --------------
+@login_required
+def fight_logs(request):
+    logs = Log.objects.filter(status=1,detection_type='Fight').order_by('-id')
+    logs={'logs':logs}
+    return render(request,'fight_logs.html',logs)
+
 #------------- Log Delete --------------
 @login_required
 def view_log(request,pk):
@@ -231,6 +250,63 @@ def del_log(request,pk):
     messages.success(request,"Log Deleted Successfully !!")
     return redirect('alert_logs')
 
+#------------- Gun Detections Per Month Graph In Admin Panel --------------
+@login_required
+def GunDetectionChart(request):
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    labels = []
+    gun_detection_count = []
+    thisYear = True
+    current_date = datetime.date.today()
+    current_month = current_date.month
+    current_year = current_date.year
+    i=0
+    while i<12:
+        month = (current_month-i)-1
+        if month < 0:
+            month = month+12
+            thisYear = False
+        if thisYear == True:
+            date = month_names[month] +' '+ str(current_year)
+            gun_log_count = Log.objects.filter(Q(created_at__year=current_year) & Q(created_at__month=month+1) & Q(detection_type='Gun')).count()
+            gun_detection_count.append(str(gun_log_count))
+        else:
+            date = month_names[month] +' '+str(current_year-1)
+            gun_log_count = Log.objects.filter(Q(created_at__year=current_year-1) & Q(created_at__month=month+1) & Q(detection_type='Gun')).count()
+            gun_detection_count.append(str(gun_log_count))
+        i = i+1
+        labels.append(date)
+    
+    return JsonResponse({'months': labels, 'gun_detection_count': gun_detection_count}, safe=False)
+
+#------------- Fight Detections Per Month Graph In Admin Panel --------------
+@login_required
+def FightDetectionChart(request):
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    labels = []
+    fight_detection_count = []
+    thisYear = True
+    current_date = datetime.date.today()
+    current_month = current_date.month
+    current_year = current_date.year
+    i=0
+    while i<12:
+        month = (current_month-i)-1
+        if month < 0:
+            month = month+12
+            thisYear = False
+        if thisYear == True:
+            date = month_names[month] +' '+ str(current_year)
+            fight_log_count = Log.objects.filter(Q(created_at__year=current_year) & Q(created_at__month=month+1) & Q(detection_type='Fight')).count()
+            fight_detection_count.append(str(fight_log_count))
+        else:
+            date = month_names[month] +' '+str(current_year-1)
+            fight_log_count = Log.objects.filter(Q(created_at__year=current_year-1) & Q(created_at__month=month+1) & Q(detection_type='Fight')).count()
+            fight_detection_count.append(str(fight_log_count))
+        i = i+1
+        labels.append(date)
+    
+    return JsonResponse({'months': labels, 'fight_detection_count': fight_detection_count}, safe=False)
 
 #---------------------------- Gun & Fight Detection  --------------------------
 
