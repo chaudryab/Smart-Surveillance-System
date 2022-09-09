@@ -58,12 +58,12 @@ global input1
 global input2
 #--------- Stream Input ---------
 input1=int(0)
-input2=int(0)
+input2=int(1)
 cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
 #--------- No. Camera Mode ---------
-cam1_mode=1
-cam2_mode=0
+cam1_mode=int(1)
+cam2_mode=int(0)
 #---------------------------- Admin Portal  --------------------------
 
 #------------- Login --------------
@@ -197,12 +197,18 @@ def index(request):
 #------------- Gun Detection --------------
 @login_required
 def gun_detect(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
     return render(request, 'gun_detect.html',cam_status)
 
 #------------- Fight Detection --------------
 @login_required
 def fight_detect(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
     return render(request, 'fight_detect.html',cam_status)
 
@@ -224,7 +230,7 @@ def cam1_fight_video_feed(request):
 #------------- Camera 2 Video Feed For Fight Detection --------------
 @login_required
 def cam2_fight_video_feed(request):
-    return StreamingHttpResponse(cam2_gun_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
+    return StreamingHttpResponse(cam2_fight_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
 
 #------------- Log Alerts --------------
 @login_required
@@ -461,6 +467,7 @@ def cam2_gun_detect(cam2,input2):
 #-------- Camera 1 Fight Detection -----------
 def cam1_fight_detect(cam1,input1):
     video_path = 0
+    frame_count = 0
     fight_detect_count = 0
     detection_type = None
     cam_no = 1
@@ -500,21 +507,84 @@ def cam1_fight_detect(cam1,input1):
             bird_name = class_ind[highest_pred_loc]
             if bird_name == 'fight':
                 fight_detect_count = fight_detect_count + 1
-                if fight_detect_count == 5:
+            if frame_count == 30:
+                frame_count = 0
+                if fight_detect_count >= 25:
                     detection_type = 'Fight'
                     num = random.random()
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
                     detection_log(detection_type,cam_no,num)
                     fight_detect_count = 0
+                else:
+                    fight_detect_count = 0
             frame_id += 1
+            frame_count = frame_count+1
+            ret, buffer = cv2.imencode('.jpg', frame)
+            fframe = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
+            
+    
+#-------- Camera 2 Fight Detection -----------
+def cam2_fight_detect(cam2,input2):
+    video_path = 0
+    frame_count = 0
+    fight_detect_count = 0
+    detection_type = None
+    cam_no = 2
+    class_ind = {
+    0: 'fight',
+    1: 'nofight'
+    }
+    # Load TFLite model and allocate tensors.
+    interpreter = tflite.Interpreter(fight_model)
+    # allocate the tensors
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    cam2=cv2.VideoCapture(input2)
+    try:
+	    vid = cam2
+    except:
+    	vid = cv2.VideoCapture(int(video_path))
+    frame_id = 0
+    while True:
+        return_value, frame = vid.read()
+        if not return_value:
+            break
+        else:
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+            highest_pred_loc = np.argmax(pred)
+            bird_name = class_ind[highest_pred_loc]
+            if bird_name == 'fight':
+                fight_detect_count = fight_detect_count + 1
+            if frame_count == 30:
+                frame_count = 0
+                if fight_detect_count >= 25:
+                    detection_type = 'Fight'
+                    num = random.random()
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
+                    detection_log(detection_type,cam_no,num)
+                    fight_detect_count = 0
+                else:
+                    fight_detect_count = 0
+            frame_id += 1
+            frame_count = frame_count+1
             ret, buffer = cv2.imencode('.jpg', frame)
             fframe = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
     
-    
-          
-
 #---------- Detection Log Save In DB ------------
 def detection_log(detection_type,cam_no,num):
     from datetime import datetime, date
