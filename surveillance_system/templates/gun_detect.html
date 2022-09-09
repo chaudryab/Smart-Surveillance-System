@@ -1,7 +1,30 @@
 {% extends 'includes/master.html' %}
+{% block css %}
+<style>
+ #loader {
+            border: 12px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 12px solid #444444;
+            width: 70px;
+            height: 70px;
+            animation: spin 1s linear infinite;
+        }
+          
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        .center {
+            margin-top: 25%;
+            margin-left: 30%;
+           
+        }
+</style>
+{% endblock %}
 {% block body %}
 {% load static %}
-
+<div id="loader" class="center"></div>
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-12">
@@ -38,6 +61,21 @@
 </div>
 {% endblock %}
 {% block js %}
+<script>
+    document.onreadystatechange = function() {
+        if (document.readyState !== "complete") {
+            document.querySelector(
+              "body").style.visibility = "hidden";
+            document.querySelector(
+              "#loader").style.visibility = "visible";
+        } else {
+            document.querySelector(
+              "#loader").style.display = "none";
+            document.querySelector(
+              "body").style.visibility = "visible";
+        }
+    };
+</script>
 <script type="text/javascript">
     $(document).ready( function() {
         $('#alertDiv').delay(3000).slideUp(1200);
