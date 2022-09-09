@@ -10,7 +10,6 @@ from django.http import HttpResponseRedirect
 from django.http import StreamingHttpResponse
 from .models import *
 import datetime
-# from datetime import datetime, date
 from .helpers import *
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth import update_session_auth_hash
@@ -28,7 +27,6 @@ from absl import flags, logging
 from absl.flags import FLAGS
 from tensorflow.python.saved_model import tag_constants
 from PIL import Image
-import cv2
 import numpy as np
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
@@ -37,7 +35,6 @@ from imutils.video import FPS
 import winsound
 import os
 import tensorflow.lite as tflite
-
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-tiny-416', 'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
@@ -49,18 +46,24 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_string('output', None, 'path to output video')
 flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file, MJPG or XVID')
 flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the process') # this is good for the .ipynb
-
+#--------- Model Load ---------
 gun_model =  os.path.join(settings.BASE_DIR,'gun_detection/checkpoints/yolov4-tiny-416')
 fight_model =  os.path.join(settings.BASE_DIR,'fight_detection/fightModel.tflite')
-
+#--------- Global Variables ---------
 global cam1
 global cam2
+global cam1_mode
+global cam2_mode
 global input1
 global input2
+#--------- Stream Input ---------
 input1=int(0)
 input2=int(0)
 cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
+#--------- No. Camera Mode ---------
+cam1_mode=1
+cam2_mode=0
 #---------------------------- Admin Portal  --------------------------
 
 #------------- Login --------------
@@ -135,6 +138,9 @@ def reset_pwd(request,token):
 @login_required
 @csrf_exempt
 def change_password(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     superusers = User.objects.get(is_superuser=True)
     if request.method == 'POST':
         old_password = request.POST['old_password']
@@ -163,6 +169,9 @@ def change_password(request):
 #------------- Admin Logout --------------
 @login_required
 def logout(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     auth.logout(request)
     return redirect('login')
 
@@ -188,8 +197,14 @@ def index(request):
 #------------- Gun Detection --------------
 @login_required
 def gun_detect(request):
-    cam_status = {'cam1':1,'cam2':0}
+    cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
     return render(request, 'gun_detect.html',cam_status)
+
+#------------- Fight Detection --------------
+@login_required
+def fight_detect(request):
+    cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
+    return render(request, 'fight_detect.html',cam_status)
 
 #------------- Camera 1 Video Feed For Gun Detection --------------
 @login_required
@@ -201,9 +216,22 @@ def cam1_video_feed(request):
 def cam2_video_feed(request):
     return StreamingHttpResponse(cam2_gun_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
 
+#------------- Camera 1 Video Feed For Fight Detection --------------
+@login_required
+def cam1_fight_video_feed(request):
+    return StreamingHttpResponse(cam1_fight_detect(cam1,input1), content_type='multipart/x-mixed-replace; boundary=frame')
+
+#------------- Camera 2 Video Feed For Fight Detection --------------
+@login_required
+def cam2_fight_video_feed(request):
+    return StreamingHttpResponse(cam2_gun_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
+
 #------------- Log Alerts --------------
 @login_required
 def alert_logs(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     logs = Log.objects.filter(status=1).order_by('-id')
     logs={'logs':logs}
     return render(request,'alert_logs.html',logs)
@@ -211,6 +239,9 @@ def alert_logs(request):
 #------------- Gun Detecion Logs --------------
 @login_required
 def gun_logs(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     logs = Log.objects.filter(status=1,detection_type='Gun').order_by('-id')
     logs={'logs':logs}
     return render(request,'gun_logs.html',logs)
@@ -218,6 +249,9 @@ def gun_logs(request):
 #------------- Fight Detecion Logs --------------
 @login_required
 def fight_logs(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     logs = Log.objects.filter(status=1,detection_type='Fight').order_by('-id')
     logs={'logs':logs}
     return render(request,'fight_logs.html',logs)
@@ -225,6 +259,9 @@ def fight_logs(request):
 #------------- Log Delete --------------
 @login_required
 def view_log(request,pk):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
     logs=Log.objects.filter(id=pk).first()
     log={'log':logs}
     return render(request,'view_log.html',log)
@@ -421,6 +458,61 @@ def cam2_gun_detect(cam2,input2):
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
   
+#-------- Camera 1 Fight Detection -----------
+def cam1_fight_detect(cam1,input1):
+    video_path = 0
+    fight_detect_count = 0
+    detection_type = None
+    cam_no = 1
+    class_ind = {
+    0: 'fight',
+    1: 'nofight'
+    }
+    # Load TFLite model and allocate tensors.
+    interpreter = tflite.Interpreter(fight_model)
+    # allocate the tensors
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    cam1=cv2.VideoCapture(input1)
+    try:
+	    vid = cam1
+    except:
+    	vid = cv2.VideoCapture(int(video_path))
+    frame_id = 0
+    while True:
+        return_value, frame = vid.read()
+        if not return_value:
+            break
+        else:
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+            highest_pred_loc = np.argmax(pred)
+            bird_name = class_ind[highest_pred_loc]
+            if bird_name == 'fight':
+                fight_detect_count = fight_detect_count + 1
+                if fight_detect_count == 5:
+                    detection_type = 'Fight'
+                    num = random.random()
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
+                    detection_log(detection_type,cam_no,num)
+                    fight_detect_count = 0
+            frame_id += 1
+            ret, buffer = cv2.imencode('.jpg', frame)
+            fframe = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
+    
+    
           
 
 #---------- Detection Log Save In DB ------------
