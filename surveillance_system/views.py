@@ -63,7 +63,7 @@ cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
 #--------- No. Camera Mode ---------
 cam1_mode=int(1)
-cam2_mode=int(0)
+cam2_mode=int(1)
 #---------------------------- Admin Portal  --------------------------
 
 #------------- Login --------------
@@ -212,6 +212,15 @@ def fight_detect(request):
     cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
     return render(request, 'fight_detect.html',cam_status)
 
+#------------- Gun & Fight Detection --------------
+@login_required
+def gun_fight_detect(request):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
+    cam_status = {'cam1':cam1_mode,'cam2':cam2_mode}
+    return render(request, 'gun&fight_detect.html',cam_status)
+
 #------------- Camera 1 Video Feed For Gun Detection --------------
 @login_required
 def cam1_video_feed(request):
@@ -231,6 +240,16 @@ def cam1_fight_video_feed(request):
 @login_required
 def cam2_fight_video_feed(request):
     return StreamingHttpResponse(cam2_fight_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
+
+#------------- Camera 1 Video Feed For Gun & Fight Detection --------------
+@login_required
+def cam1_gun_fight_video_feed(request):
+    return StreamingHttpResponse(cam1_gun_fight_detect(cam1,input1), content_type='multipart/x-mixed-replace; boundary=frame')
+
+#------------- Camera 2 Video Feed For Gun & Fight Detection --------------
+@login_required
+def cam2_gun_fight_video_feed(request):
+    return StreamingHttpResponse(cam2_gun_fight_detect(cam2,input2), content_type='multipart/x-mixed-replace; boundary=frame')
 
 #------------- Log Alerts --------------
 @login_required
@@ -585,6 +604,204 @@ def cam2_fight_detect(cam2,input2):
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
     
+
+#-------- Camera 1 Gun & Fight Detection -----------
+def cam1_gun_fight_detect(cam1,input1):
+    config = ConfigProto()
+    config.gpu_options.allow_growth = True
+    input_size = 416
+    video_path = 0
+    frame_count = 0
+    fight_detect_count = 0
+    gun_detect_count = 0
+    detection_type = None
+    cam_no = 1
+     # Load TFLite model and allocate tensors.
+    interpreter = tflite.Interpreter(model_path= fight_model)
+    # allocate the tensors
+    interpreter.allocate_tensors()
+    cam1=cv2.VideoCapture(input1)
+    class_ind = {
+    0: 'fight',
+    1: 'nofight'
+    }
+    try:
+	    vid = cam1
+    except:
+    	vid = cv2.VideoCapture(int(video_path))
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    saved_model_loaded = tf.saved_model.load(gun_model,tags=[tag_constants.SERVING])
+    infer = saved_model_loaded.signatures['serving_default']
+    frame_id = 0
+    while True:
+        return_value, frame = vid.read()
+        if not return_value:
+            break
+        else:
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_data = cv2.resize(frame, (input_size, input_size))
+            image_data = image_data / 255.
+            image_data = image_data[np.newaxis, ...].astype(np.float32)
+            batch_data = tf.constant(image_data)
+            pred_bbox = infer(batch_data)
+            for key, value in pred_bbox.items():
+                boxes = value[:, :, 0:4]
+                pred_conf = value[:, :, 4:]
+            boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
+            boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
+            scores=tf.reshape(
+                pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
+            max_output_size_per_class=50,
+            max_total_size=50,
+            iou_threshold=0.45,
+            score_threshold=0.50
+            )
+            pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
+            if valid_detections.numpy() == 1:
+                gun_detect_count = gun_detect_count + 1
+                if gun_detect_count == 5:
+                    detection_type = 'Gun'
+                    num = random.random()
+                    frame_in_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame_in_rgb)
+                    detection_log(detection_type,cam_no,num)
+                    gun_detect_count = 0
+                    print("--------------Gun Detect----------------------")
+            result = np.asarray(frame)
+            result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+            highest_pred_loc = np.argmax(pred)
+            bird_name = class_ind[highest_pred_loc]
+            if bird_name == 'fight':
+                fight_detect_count = fight_detect_count + 1
+            if frame_count == 30:
+                frame_count = 0
+                if fight_detect_count >= 25:
+                    detection_type = 'Fight'
+                    num = random.random()
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
+                    detection_log(detection_type,cam_no,num)
+                    fight_detect_count = 0
+                    print("--------------Fight Detect----------------------")
+                else:
+                    fight_detect_count = 0
+            frame_id += 1
+            frame_count = frame_count+1
+            frame_id += 1
+            ret, buffer = cv2.imencode('.jpg', result)
+            fframe = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
+    
+
+#-------- Camera 2 Gun & Fight Detection -----------
+def cam2_gun_fight_detect(cam1,input2):
+    config = ConfigProto()
+    config.gpu_options.allow_growth = True
+    input_size = 416
+    video_path = 0
+    frame_count = 0
+    fight_detect_count = 0
+    gun_detect_count = 0
+    detection_type = None
+    cam_no = 2
+     # Load TFLite model and allocate tensors.
+    interpreter = tflite.Interpreter(model_path= fight_model)
+    # allocate the tensors
+    interpreter.allocate_tensors()
+    cam1=cv2.VideoCapture(input2)
+    class_ind = {
+    0: 'fight',
+    1: 'nofight'
+    }
+    try:
+	    vid = cam1
+    except:
+    	vid = cv2.VideoCapture(int(video_path))
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    saved_model_loaded = tf.saved_model.load(gun_model,tags=[tag_constants.SERVING])
+    infer = saved_model_loaded.signatures['serving_default']
+    frame_id = 0
+    while True:
+        return_value, frame = vid.read()
+        if not return_value:
+            break
+        else:
+            imgF = cv2.resize(frame, (224, 224))
+            normalized_frame = imgF / 255
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image_data = cv2.resize(frame, (input_size, input_size))
+            image_data = image_data / 255.
+            image_data = image_data[np.newaxis, ...].astype(np.float32)
+            batch_data = tf.constant(image_data)
+            pred_bbox = infer(batch_data)
+            for key, value in pred_bbox.items():
+                boxes = value[:, :, 0:4]
+                pred_conf = value[:, :, 4:]
+            boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
+            boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
+            scores=tf.reshape(
+                pred_conf, (tf.shape(pred_conf)[0], -1, tf.shape(pred_conf)[-1])),
+            max_output_size_per_class=50,
+            max_total_size=50,
+            iou_threshold=0.45,
+            score_threshold=0.50
+            )
+            pred_bbox = [boxes.numpy(), scores.numpy(), classes.numpy(), valid_detections.numpy()]
+            if valid_detections.numpy() == 1:
+                gun_detect_count = gun_detect_count + 1
+                if gun_detect_count == 5:
+                    detection_type = 'Gun'
+                    num = random.random()
+                    frame_in_rgb = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame_in_rgb)
+                    detection_log(detection_type,cam_no,num)
+                    gun_detect_count = 0
+            result = np.asarray(frame)
+            result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            # Preprocess the image to required size and cast
+            input_shape = input_details[0]['shape']
+            input_tensor = np.array(np.expand_dims(normalized_frame, 0), dtype=np.float32)
+            input_index = interpreter.get_input_details()[0]["index"]
+            interpreter.set_tensor(input_index, input_tensor)
+            interpreter.invoke()
+            output_details = interpreter.get_output_details()
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            pred = np.squeeze(output_data)
+            highest_pred_loc = np.argmax(pred)
+            bird_name = class_ind[highest_pred_loc]
+            if bird_name == 'fight':
+                fight_detect_count = fight_detect_count + 1
+            if frame_count == 30:
+                frame_count = 0
+                if fight_detect_count >= 25:
+                    detection_type = 'Fight'
+                    num = random.random()
+                    cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
+                    detection_log(detection_type,cam_no,num)
+                    fight_detect_count = 0
+                else:
+                    fight_detect_count = 0
+            frame_count = frame_count+1
+            ret, buffer = cv2.imencode('.jpg', result)
+            fframe = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + fframe + b'\r\n')
+    
+ 
+
 #---------- Detection Log Save In DB ------------
 def detection_log(detection_type,cam_no,num):
     from datetime import datetime, date
