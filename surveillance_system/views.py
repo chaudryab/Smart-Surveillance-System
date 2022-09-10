@@ -669,7 +669,6 @@ def cam1_gun_fight_detect(cam1,input1):
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame_in_rgb)
                     detection_log(detection_type,cam_no,num)
                     gun_detect_count = 0
-                    print("--------------Gun Detect----------------------")
             result = np.asarray(frame)
             result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             # Preprocess the image to required size and cast
@@ -693,7 +692,6 @@ def cam1_gun_fight_detect(cam1,input1):
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
                     detection_log(detection_type,cam_no,num)
                     fight_detect_count = 0
-                    print("--------------Fight Detect----------------------")
                 else:
                     fight_detect_count = 0
             frame_id += 1
