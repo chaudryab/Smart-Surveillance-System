@@ -63,7 +63,7 @@ cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
 #--------- No. Camera Mode ---------
 cam1_mode=int(1)
-cam2_mode=int(1)
+cam2_mode=int(0)
 #---------------------------- Admin Portal  --------------------------
 
 #------------- Login --------------
@@ -808,6 +808,8 @@ def detection_log(detection_type,cam_no,num):
     log = Log(image=num,cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
     log.save()
     generate_alarm()
+    alert_mail(detection_type,cam_no,current_time,current_date,num)
+    
     
 #---------- Generate Alarm ------------
 def generate_alarm():
