@@ -11,6 +11,9 @@ from django.http import StreamingHttpResponse
 from .models import *
 import datetime
 from .helpers import *
+from .send_sms import *
+from django.conf import settings
+from twilio.rest import Client
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth import update_session_auth_hash
 import random
@@ -57,8 +60,9 @@ global cam2_mode
 global input1
 global input2
 #--------- Stream Input ---------
-input1=int(0)
-input2=int(1)
+input1=int(2)
+input2=int(3)
+# input2='http://192.168.1.6:4747/video'
 cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
 #--------- No. Camera Mode ---------
@@ -808,7 +812,8 @@ def detection_log(detection_type,cam_no,num):
     log = Log(image=num,cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
     log.save()
     generate_alarm()
-    alert_mail(detection_type,cam_no,current_time,current_date,num)
+    alert_sms(detection_type,cam_no)
+    # alert_mail(detection_type,cam_no,current_time,current_date,num)
     
     
 #---------- Generate Alarm ------------
