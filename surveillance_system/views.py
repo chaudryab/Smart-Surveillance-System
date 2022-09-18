@@ -285,7 +285,7 @@ def fight_logs(request):
     logs={'logs':logs}
     return render(request,'fight_logs.html',logs)
 
-#------------- Log Delete --------------
+#------------- View Log  --------------
 @login_required
 def view_log(request,pk):
     cam1.release()
@@ -294,6 +294,22 @@ def view_log(request,pk):
     logs=Log.objects.filter(id=pk).first()
     log={'log':logs}
     return render(request,'view_log.html',log)
+
+#------------- Share Log  --------------
+@login_required
+def share_log(request,pk):
+    cam1.release()
+    cam2.release()
+    cv2.destroyAllWindows()
+    log=Log.objects.filter(id=pk).first()
+    detection_type = log.detection_type
+    cam_no = log.cam_no 
+    current_time = log.time
+    current_date = log.date
+    num = log.image
+    alert_mail(detection_type,cam_no,current_time,current_date,num)
+    messages.success(request,"Log Send Successfully !!")
+    return redirect('alert_logs')
 
 #------------- Log Delete --------------
 @login_required

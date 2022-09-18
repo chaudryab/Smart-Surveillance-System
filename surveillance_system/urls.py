@@ -24,6 +24,7 @@ urlpatterns = [
     path('gun_logs',views.gun_logs,name='gun_logs'),
     path('fight_logs',views.fight_logs,name='fight_logs'),
     path('view_log/<pk>',views.view_log,name='view_log'),
+    path('share_log/<pk>',views.share_log,name='share_log'),
     path('del_log/<pk>',views.del_log,name='del_log'),
     path('monthly_gun_detection_chart', views.GunDetectionChart, name="monthly_gun_detection_chart"),
     path('monthly_fight_detection_chart', views.FightDetectionChart, name="monthly_fight_detection_chart"),

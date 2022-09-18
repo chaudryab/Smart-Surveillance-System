@@ -14,6 +14,11 @@
                             <h3 class="text-center">Alert Information</h3>
                         </div>
                     </div>
+                    {% if messages %}
+                    {% for message in messages %}
+                        <div id="alertDiv" class="alert {% if message.tags %}alert-{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}danger{% else %}{{ message.tags }}{% endif %}{% endif %}" role="alert">{{ message }}</div>
+                    {% endfor %}
+                    {% endif %}
                     <div class="row">
                         <div class="col-xs-6 col-md-6 mt-5">
                             <img src="../../static/detection_images/frame_{{ log.image }}.jpg" width="90%">
@@ -52,6 +57,7 @@
                                 </div>
                             </div>
                             <div class="mt-5">
+                                <!-- <a class="btn btn-primary" href="{% url 'share_log' pk=log.id %}" role="button">Share via Email</a> -->
                                 <a class="btn btn-primary" href="{% url 'alert_logs' %}" role="button">Back</a>
                             </div>
                         </div>
@@ -63,5 +69,11 @@
 </div>
 {% endblock %}
 {% block js %}
-
+<script src="{% static '/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static '/js/datatable/datatables/datatable.custom.js' %}"></script>
+    <script type="text/javascript">
+        $(document).ready( function() {
+            $('#alertDiv').delay(3000).slideUp(1200);
+        });
+    </script>
 {% endblock %}
