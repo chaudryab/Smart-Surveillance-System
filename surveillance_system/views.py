@@ -49,9 +49,10 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_string('output', None, 'path to output video')
 flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file, MJPG or XVID')
 flags.DEFINE_boolean('dis_cv2_window', True, 'disable cv2 window during the process') # this is good for the .ipynb
-#--------- Model Load ---------
+#--------- Model Path ---------
 gun_model =  os.path.join(settings.BASE_DIR,'gun_detection/checkpoints/yolov4-tiny-416')
-fight_model =  os.path.join(settings.BASE_DIR,'fight_detection/fightModel.tflite')
+fight_model =  os.path.join(settings.BASE_DIR,'fight_detection/datasets_SMU_299.tflite')
+# fight_model =  os.path.join(settings.BASE_DIR,'fight_detection/fightModel.tflite')
 #--------- Global Variables ---------
 global cam1
 global cam2
@@ -60,8 +61,8 @@ global cam2_mode
 global input1
 global input2
 #--------- Stream Input ---------
-input1=int(2)
-input2=int(3)
+input1=int(0)
+input2=int(1)
 # input2='http://192.168.1.6:4747/video'
 cam1=cv2.VideoCapture(input1)
 cam2=cv2.VideoCapture(input2)
@@ -531,7 +532,7 @@ def cam1_fight_detect(cam1,input1):
         if not return_value:
             break
         else:
-            imgF = cv2.resize(frame, (224, 224))
+            imgF = cv2.resize(frame, (299, 299))
             normalized_frame = imgF / 255
             # Preprocess the image to required size and cast
             input_shape = input_details[0]['shape']
@@ -546,9 +547,9 @@ def cam1_fight_detect(cam1,input1):
             bird_name = class_ind[highest_pred_loc]
             if bird_name == 'fight':
                 fight_detect_count = fight_detect_count + 1
-            if frame_count == 30:
+            if frame_count == 20:
                 frame_count = 0
-                if fight_detect_count >= 25:
+                if fight_detect_count >= 10:
                     detection_type = 'Fight'
                     num = random.random()
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
@@ -592,7 +593,7 @@ def cam2_fight_detect(cam2,input2):
         if not return_value:
             break
         else:
-            imgF = cv2.resize(frame, (224, 224))
+            imgF = cv2.resize(frame, (299, 299))
             normalized_frame = imgF / 255
             # Preprocess the image to required size and cast
             input_shape = input_details[0]['shape']
@@ -607,9 +608,9 @@ def cam2_fight_detect(cam2,input2):
             bird_name = class_ind[highest_pred_loc]
             if bird_name == 'fight':
                 fight_detect_count = fight_detect_count + 1
-            if frame_count == 30:
+            if frame_count == 20:
                 frame_count = 0
-                if fight_detect_count >= 25:
+                if fight_detect_count >= 10:
                     detection_type = 'Fight'
                     num = random.random()
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
@@ -659,7 +660,7 @@ def cam1_gun_fight_detect(cam1,input1):
         if not return_value:
             break
         else:
-            imgF = cv2.resize(frame, (224, 224))
+            imgF = cv2.resize(frame, (299, 299))
             normalized_frame = imgF / 255
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image_data = cv2.resize(frame, (input_size, input_size))
@@ -704,9 +705,9 @@ def cam1_gun_fight_detect(cam1,input1):
             bird_name = class_ind[highest_pred_loc]
             if bird_name == 'fight':
                 fight_detect_count = fight_detect_count + 1
-            if frame_count == 30:
+            if frame_count == 20:
                 frame_count = 0
-                if fight_detect_count >= 25:
+                if fight_detect_count >= 10:
                     detection_type = 'Fight'
                     num = random.random()
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
@@ -757,7 +758,7 @@ def cam2_gun_fight_detect(cam1,input2):
         if not return_value:
             break
         else:
-            imgF = cv2.resize(frame, (224, 224))
+            imgF = cv2.resize(frame, (299, 299))
             normalized_frame = imgF / 255
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image_data = cv2.resize(frame, (input_size, input_size))
@@ -802,9 +803,9 @@ def cam2_gun_fight_detect(cam1,input2):
             bird_name = class_ind[highest_pred_loc]
             if bird_name == 'fight':
                 fight_detect_count = fight_detect_count + 1
-            if frame_count == 30:
+            if frame_count == 20:
                 frame_count = 0
-                if fight_detect_count >= 25:
+                if fight_detect_count >= 10:
                     detection_type = 'Fight'
                     num = random.random()
                     cv2.imwrite(f"static/detection_images/frame_{num}.jpg", frame)
@@ -828,7 +829,7 @@ def detection_log(detection_type,cam_no,num):
     log = Log(image=num,cam_no=cam_no,detection_type=detection_type,time=current_time,date=current_date)
     log.save()
     generate_alarm()
-    alert_sms(detection_type,cam_no)
+    alert_sms(detection_type,cam_no,current_time)
     # alert_mail(detection_type,cam_no,current_time,current_date,num)
     
     
